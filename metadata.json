@@ -1,0 +1,6 @@
+{
+  "name": "Addis Luxury Realty",
+  "description": "Bilingual premium real estate agency platform for Addis Ababa, Ethiopia.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

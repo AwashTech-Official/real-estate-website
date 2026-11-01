@@ -5,18 +5,33 @@
 
 import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
+// Top critical components loaded eagerly
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
 import StackingAbout from './components/StackingAbout';
 import { CinematicVideoSection } from './components/CinematicVideoSection';
 import ServicesSlider from './components/ServicesSlider';
 import { ValuationVideoSection } from './components/ValuationVideoSection';
-import { FeaturedProperties } from './components/FeaturedProperties';
-import { ValuationAndListingSection } from './components/ValuationAndListingSection';
-import { ContactSection } from './components/ContactSection';
-import { Footer } from './components/Footer';
-import { AllPropertiesView } from './components/AllPropertiesView';
-import { PropertyDetailView } from './components/PropertyDetailView';
+
+// Below-the-fold components lazy-loaded for immediate top-page performance
+const FeaturedProperties = lazy(() =>
+  import('./components/FeaturedProperties').then((m) => ({ default: m.FeaturedProperties }))
+);
+const ValuationAndListingSection = lazy(() =>
+  import('./components/ValuationAndListingSection').then((m) => ({ default: m.ValuationAndListingSection }))
+);
+const ContactSection = lazy(() =>
+  import('./components/ContactSection').then((m) => ({ default: m.ContactSection }))
+);
+const Footer = lazy(() =>
+  import('./components/Footer').then((m) => ({ default: m.Footer }))
+);
+const AllPropertiesView = lazy(() =>
+  import('./components/AllPropertiesView').then((m) => ({ default: m.AllPropertiesView }))
+);
+const PropertyDetailView = lazy(() =>
+  import('./components/PropertyDetailView').then((m) => ({ default: m.PropertyDetailView }))
+);
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { getCompanySettings } from './lib/supabase';
@@ -195,7 +210,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen min-h-screen-dvh w-full max-w-full overflow-x-hidden flex flex-col bg-[#0C0D10] text-[#F5F3EF]">
+    <div className="min-h-screen min-h-screen-dvh w-full max-w-full flex flex-col bg-[#0C0D10] text-[#F5F3EF]">
       {/* 1. Sticky Top Navigation */}
       <ErrorBoundary sectionName="Header Navigation">
         <Header
@@ -205,7 +220,7 @@ function AppContent() {
         />
       </ErrorBoundary>
 
-      <main className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col items-center">
+      <main className="flex-1 w-full max-w-full flex flex-col items-center">
         {currentView === 'home' && (
           <>
             {/* 2. Full-Screen Background Video Hero Section */}
@@ -233,54 +248,63 @@ function AppContent() {
               <ValuationVideoSection onValuationClick={handleNavigateToValuation} />
             </ErrorBoundary>
 
-            {/* 7. Featured Properties Grid */}
-            <ErrorBoundary sectionName="Featured Properties">
-              <FeaturedProperties
-                onSelectProperty={handleSelectProperty}
-                onViewAllProperties={handleViewAllProperties}
-              />
-            </ErrorBoundary>
+            {/* Below-the-fold sections wrapped in Suspense with fixed placeholder heights */}
+            <Suspense fallback={<div className="w-full min-h-[400px] bg-[#0C0D10]" />}>
+              {/* 7. Featured Properties Grid */}
+              <ErrorBoundary sectionName="Featured Properties">
+                <FeaturedProperties
+                  onSelectProperty={handleSelectProperty}
+                  onViewAllProperties={handleViewAllProperties}
+                />
+              </ErrorBoundary>
 
-            {/* 8. Valuation and List Your Property Form Section */}
-            <ErrorBoundary sectionName="Valuation & Listing Requests">
-              <ValuationAndListingSection id="valuation-section" />
-            </ErrorBoundary>
+              {/* 8. Valuation and List Your Property Form Section */}
+              <ErrorBoundary sectionName="Valuation & Listing Requests">
+                <ValuationAndListingSection id="valuation-section" />
+              </ErrorBoundary>
 
-            {/* 9. Contact Section with Direct Buttons and Public Inquiry Form */}
-            <ErrorBoundary sectionName="Contact & Inquiry Office">
-              <ContactSection companySettings={companySettings} />
-            </ErrorBoundary>
+              {/* 9. Contact Section with Direct Buttons and Public Inquiry Form */}
+              <ErrorBoundary sectionName="Contact & Inquiry Office">
+                <ContactSection companySettings={companySettings} />
+              </ErrorBoundary>
+            </Suspense>
           </>
         )}
 
         {currentView === 'all-properties' && (
-          <ErrorBoundary sectionName="Properties Catalog">
-            <AllPropertiesView
-              companySettings={companySettings}
-              onBackToHome={handleBackToHome}
-              onSelectProperty={handleSelectProperty}
-            />
-          </ErrorBoundary>
+          <Suspense fallback={<div className="w-full min-h-[500px] bg-[#0C0D10]" />}>
+            <ErrorBoundary sectionName="Properties Catalog">
+              <AllPropertiesView
+                companySettings={companySettings}
+                onBackToHome={handleBackToHome}
+                onSelectProperty={handleSelectProperty}
+              />
+            </ErrorBoundary>
+          </Suspense>
         )}
 
         {currentView === 'property-detail' && (
-          <ErrorBoundary sectionName="Property Details">
-            <PropertyDetailView
-              slug={selectedPropertySlug || ''}
-              onBack={handleBackFromDetail}
-            />
-          </ErrorBoundary>
+          <Suspense fallback={<div className="w-full min-h-[500px] bg-[#0C0D10]" />}>
+            <ErrorBoundary sectionName="Property Details">
+              <PropertyDetailView
+                slug={selectedPropertySlug || ''}
+                onBack={handleBackFromDetail}
+              />
+            </ErrorBoundary>
+          </Suspense>
         )}
       </main>
 
       {/* 10. Complete Footer with Links and Social Icons */}
-      <ErrorBoundary sectionName="Footer">
-        <Footer
-          companySettings={companySettings}
-          onNavigateProperties={handleViewAllProperties}
-          onNavigateValuation={handleNavigateToValuation}
-        />
-      </ErrorBoundary>
+      <Suspense fallback={<div className="w-full min-h-[200px] bg-[#0C0D10]" />}>
+        <ErrorBoundary sectionName="Footer">
+          <Footer
+            companySettings={companySettings}
+            onNavigateProperties={handleViewAllProperties}
+            onNavigateValuation={handleNavigateToValuation}
+          />
+        </ErrorBoundary>
+      </Suspense>
 
       {/* 11. Floating WhatsApp Button (Smart Form Occlusion Prevention, Bottom-Right) */}
       <ErrorBoundary sectionName="WhatsApp Chat">

@@ -1,16 +1,6 @@
-@import "tailwindcss";
-
-@theme {
-  --color-bg-main: #0C0D10;
-  --color-card-main: #141519;
-  --color-text-main: #F5F3EF;
-  --color-muted-main: #B4B1A8;
-  --color-accent-main: #C8A35F;
-  --color-accent-hover: #DEC07E;
-
-  --font-display: 'Plus Jakarta Sans', 'Noto Sans Ethiopic', system-ui, -apple-system, sans-serif;
-  --font-body: 'DM Sans', 'Noto Sans Ethiopic', system-ui, -apple-system, sans-serif;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #0C0D10;
@@ -31,18 +21,24 @@
 html, body {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Use overflow-x: clip so GSAP ScrollTrigger pinning and sticky elements are never broken */
+@supports (overflow: clip) {
+  html, body {
+    overflow-x: clip;
+  }
 }
 
 body {
   background-color: #0C0D10;
   color: #F5F3EF;
   font-family: var(--font-body);
-  /* Standard vh fallback before modern dvh for older Android WebView 80 */
+  /* Standard vh fallback before modern dvh for older Android WebView */
   min-height: 100vh;
   min-height: 100dvh;
-  margin: 0;
-  padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -54,13 +50,52 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Amharic specific typography enforcement:
    - Must use normal letter-spacing
-   - Line height 1.5 or more */
+   - Line height 1.6 or more */
 :lang(am),
 [lang="am"],
 .lang-am {
   font-family: 'Noto Sans Ethiopic', 'Plus Jakarta Sans', 'DM Sans', sans-serif !important;
   letter-spacing: normal !important;
   line-height: 1.625 !important;
+}
+
+/* Older Android WebView compatibility fallbacks */
+.inset-0 {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+/* Guaranteed Header layout classes: Desktop links hidden on mobile, hamburger hidden on desktop */
+@media (max-width: 767px) {
+  .header-desktop-nav {
+    display: none !important;
+  }
+  .header-mobile-hamburger {
+    display: flex !important;
+  }
+}
+@media (min-width: 768px) {
+  .header-desktop-nav {
+    display: flex !important;
+  }
+  .header-mobile-hamburger {
+    display: none !important;
+  }
+}
+
+/* Explicit gold CTA button style to guarantee no gray browser defaults */
+.btn-gold {
+  background-color: #C8A35F;
+  color: #0C0D10;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+.btn-gold:hover {
+  background-color: #DEC07E;
 }
 
 /* Viewport dynamic sizing utility with backward compatibility */
@@ -90,6 +125,31 @@ h1, h2, h3, h4, h5, h6 {
 .text-balance-fallback {
   text-wrap: normal;
   text-wrap: balance;
+}
+
+/* Aspect ratio fallback for cards */
+.aspect-16-10 {
+  aspect-ratio: 16 / 10;
+}
+@supports not (aspect-ratio: 16 / 10) {
+  .aspect-16-10 {
+    position: relative;
+    padding-top: 62.5%;
+  }
+  .aspect-16-10 > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* Fallback CSS sticky positioning for About cards if GSAP fails */
+.sa-sticky-fallback .sa-card {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
 }
 
 /* Respect prefers-reduced-motion */

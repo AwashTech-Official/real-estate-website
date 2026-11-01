@@ -107,21 +107,17 @@ export function isSlowConnection(): boolean {
 }
 
 /**
- * Check if client device is low-memory or small mobile viewport.
+ * Check if client device is severely memory constrained.
+ * Undefined navigator.deviceMemory or hardwareConcurrency defaults to false (not low-end).
  */
 export function isLowEndDevice(): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    // Screen width under 768px (phone screen)
-    if (window.innerWidth < 768) return true;
-
-    // Check device memory (<= 2GB)
     // @ts-expect-error - deviceMemory API
     const mem = navigator.deviceMemory;
-    if (typeof mem === 'number' && mem <= 2) return true;
-
-    // Check CPU concurrency (<= 2 cores)
-    if (typeof navigator.hardwareConcurrency === 'number' && navigator.hardwareConcurrency <= 2) {
+    const cores = navigator.hardwareConcurrency;
+    // Only flag if both memory and cores are strictly reported and minimal
+    if (typeof mem === 'number' && typeof cores === 'number' && mem <= 1 && cores <= 1) {
       return true;
     }
   } catch {

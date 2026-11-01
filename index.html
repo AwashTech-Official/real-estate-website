@@ -36,7 +36,7 @@
         });
 
         // 8-Second Watchdog Timer: Protect against silent blank screens
-        setTimeout(function() {
+        window.__APPLET_WATCHDOG__ = setTimeout(function() {
           var root = document.getElementById('root');
           var isRendered = window.__APPLET_RENDERED__ || (root && root.children && root.children.length > 0 && root.offsetHeight > 50);
           if (!isRendered) {

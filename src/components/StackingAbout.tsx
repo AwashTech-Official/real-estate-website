@@ -138,6 +138,7 @@ export default function StackingAbout({
   const cardsWrapRef = useRef<HTMLDivElement>(null);
   const cardElementsRef = useRef<(HTMLDivElement | null)[]>([]);
   const cardInnerRef = useRef<(HTMLDivElement | null)[]>([]);
+  const cardDimRef = useRef<(HTMLDivElement | null)[]>([]);
   const cardImgRef = useRef<(HTMLImageElement | null)[]>([]);
   const cardContentRef = useRef<(HTMLDivElement | null)[]>([]);
   const outroRef = useRef<HTMLDivElement>(null);
@@ -146,7 +147,7 @@ export default function StackingAbout({
 
   const [activeCardIndex, setActiveCardIndex] = useState<number>(0);
   const [isProgressVisible, setIsProgressVisible] = useState<boolean>(false);
-  const [isMobileOrLowEnd, setIsMobileOrLowEnd] = useState<boolean>(false);
+  const [useStickyFallback, setUseStickyFallback] = useState<boolean>(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -154,11 +155,9 @@ export default function StackingAbout({
     return false;
   });
 
-  // Dynamic prefers-reduced-motion and mobile/low-end capability detection
+  // Dynamic prefers-reduced-motion listener
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    setIsMobileOrLowEnd(isLowEndDevice() || isSlowConnection());
 
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const handleMotionChange = (event: MediaQueryListEvent) => {
@@ -182,9 +181,8 @@ export default function StackingAbout({
     const container = containerRef.current;
     if (!container) return;
 
-    // On mobile (<768px), low memory, or reduced motion, skip pinning & scrub.
-    // Render StackingAbout as a clean, performant vertical stack!
-    if (isMobileOrLowEnd || prefersReducedMotion) {
+    // Only skip pinning and scrubbing if user explicitly prefers reduced motion
+    if (prefersReducedMotion) {
       try {
         ScrollTrigger.getAll().forEach((st) => {
           if (st.vars.id?.toString().startsWith('sa-')) {
@@ -201,8 +199,13 @@ export default function StackingAbout({
       // Register GSAP ScrollTrigger safely inside try/catch
       gsap.registerPlugin(ScrollTrigger);
 
+      // Prevent mobile address bar jitter and Android scroll lag
+      ScrollTrigger.config({ ignoreMobileResize: true });
+      ScrollTrigger.normalizeScroll(false);
+
       const cardEls = cardElementsRef.current.filter((el): el is HTMLDivElement => el !== null);
       const cardInners = cardInnerRef.current.filter((el): el is HTMLDivElement => el !== null);
+      const cardDims = cardDimRef.current.filter((el): el is HTMLDivElement => el !== null);
       const cardImgs = cardImgRef.current.filter((el): el is HTMLImageElement => el !== null);
       const cardContents = cardContentRef.current.filter((el): el is HTMLDivElement => el !== null);
       const introEl = introRef.current;
@@ -231,7 +234,7 @@ export default function StackingAbout({
           });
         }
 
-        // 2. STACKING CARDS PINNING
+        // 2. STACKING CARDS PINNING (Active on desktop, laptop, and phones)
         cardEls.forEach((card, i) => {
           ScrollTrigger.create({
             id: `sa-pin-${i}`,
@@ -266,6 +269,7 @@ export default function StackingAbout({
         }
 
         // 4. TRANSITIONS BETWEEN CARDS
+        // Uses opacity overlay on .sa-card-dim instead of filter: brightness for GPU speed
         for (let i = 1; i < cardEls.length; i++) {
           const incomingCard = cardEls[i];
           const incomingImg = cardImgs[i];
@@ -288,7 +292,18 @@ export default function StackingAbout({
               {
                 scale: 0.91,
                 yPercent: -3.5,
-                filter: 'brightness(0.68)',
+                ease: 'none',
+                force3D: true,
+              },
+              0
+            );
+          }
+
+          if (cardDims[i - 1]) {
+            tl.to(
+              cardDims[i - 1],
+              {
+                opacity: 0.35,
                 ease: 'none',
               },
               0
@@ -302,7 +317,17 @@ export default function StackingAbout({
                 {
                   scale: Math.max(0.82, 0.91 - (i - 1 - j) * 0.04),
                   yPercent: -3.5 - (i - 1 - j) * 1.5,
-                  filter: `brightness(${Math.max(0.42, 0.68 - (i - 1 - j) * 0.12)})`,
+                  ease: 'none',
+                  force3D: true,
+                },
+                0
+              );
+            }
+            if (cardDims[j]) {
+              tl.to(
+                cardDims[j],
+                {
+                  opacity: Math.min(0.65, 0.35 + (i - 1 - j) * 0.12),
                   ease: 'none',
                 },
                 0
@@ -321,6 +346,7 @@ export default function StackingAbout({
 
         // 5. OUTRO SLIDE-UP
         const lastCardInner = cardInners[cardEls.length - 1];
+        const lastCardDim = cardDims[cardEls.length - 1];
         if (lastCardInner && outroEl) {
           const outroTl = gsap.timeline({
             scrollTrigger: {
@@ -338,11 +364,22 @@ export default function StackingAbout({
             {
               scale: 0.91,
               yPercent: -3.5,
-              filter: 'brightness(0.65)',
               ease: 'none',
+              force3D: true,
             },
             0
           );
+
+          if (lastCardDim) {
+            outroTl.to(
+              lastCardDim,
+              {
+                opacity: 0.38,
+                ease: 'none',
+              },
+              0
+            );
+          }
 
           if (outroContent) {
             outroTl.fromTo(outroContent, { opacity: 0.2, y: 40 }, { opacity: 1, y: 0, ease: 'none' }, 0);
@@ -401,7 +438,18 @@ export default function StackingAbout({
         }
       });
 
+      // Window load refresh
+      const handleWindowLoad = () => {
+        try {
+          ScrollTrigger.refresh();
+        } catch {
+          // Ignore
+        }
+      };
+      window.addEventListener('load', handleWindowLoad, { passive: true });
+
       return () => {
+        window.removeEventListener('load', handleWindowLoad);
         images.forEach((img) => {
           img.removeEventListener('load', onImageLoaded);
           img.removeEventListener('error', onImageLoaded);
@@ -409,9 +457,10 @@ export default function StackingAbout({
         ctx.revert();
       };
     } catch (err) {
-      console.warn('[StackingAbout] GSAP initialization caught and bypassed:', err);
+      console.warn('[StackingAbout] GSAP initialization error; falling back to CSS sticky:', err);
+      setUseStickyFallback(true);
     }
-  }, [prefersReducedMotion, isMobileOrLowEnd, totalCards]);
+  }, [prefersReducedMotion, totalCards]);
 
   const handleDotClick = (index: number) => {
     try {
@@ -441,7 +490,7 @@ export default function StackingAbout({
     <section
       id="about"
       ref={containerRef}
-      className={`sa-section ${className}`}
+      className={`sa-section ${useStickyFallback ? 'sa-sticky-fallback' : ''} ${className}`}
       aria-label={localizedAriaLabel}
     >
       <style>{`
@@ -462,14 +511,19 @@ export default function StackingAbout({
 
           position: relative;
           width: 100%;
+          max-width: 100%;
           background-color: var(--sa-bg);
           color: var(--sa-text);
           font-family: var(--sa-font-body);
-          /* Replace overflow-x: clip with overflow-x: hidden for Chrome 80 */
-          overflow-x: hidden;
           box-sizing: border-box;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
+        }
+
+        @supports (overflow: clip) {
+          .sa-section {
+            overflow-x: clip;
+          }
         }
 
         .sa-section *, .sa-section *::before, .sa-section *::after {
@@ -592,7 +646,29 @@ export default function StackingAbout({
           background-color: var(--sa-card-bg);
           box-shadow: var(--sa-shadow);
           transform-origin: center top;
-          will-change: transform, filter;
+          will-change: transform;
+        }
+
+        .sa-card-dim {
+          position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          left: 0;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          background-color: #000000;
+          opacity: 0;
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        /* Fallback CSS sticky behavior when GSAP is disabled or unavailable */
+        .sa-sticky-fallback .sa-card {
+          position: -webkit-sticky !important;
+          position: sticky !important;
+          top: 0 !important;
         }
 
         .sa-card-img-wrap {
@@ -843,34 +919,26 @@ export default function StackingAbout({
         }
 
         /* --------------------------------------------------------------------------
-           RESPONSIVE MOBILE & LOW-MEMORY COMPOSITION
-           On screens < 768px or prefers-reduced-motion, skip pinning and render
-           a clean vertical natural stack so low-end devices never hitch or blank out!
+           RESPONSIVE MOBILE COMPOSITION
+           Cards preserve viewport height and stack smoothly on mobile devices!
            -------------------------------------------------------------------------- */
         @media (max-width: 767px) {
           .sa-intro {
-            min-height: auto !important;
-            padding: 4.5rem 1.25rem 2.5rem !important;
+            min-height: 80vh;
+            min-height: 80svh;
+            min-height: 80dvh;
+            padding: 3.5rem 1.25rem 2rem;
           }
 
           .sa-card {
-            position: relative !important;
-            height: auto !important;
-            min-height: auto !important;
-            padding: 0.75rem 0.5rem !important;
-            margin-bottom: 2rem !important;
-            transform: none !important;
-            opacity: 1 !important;
+            padding: 0.75rem 0.5rem;
           }
 
           .sa-card-inner {
-            height: auto !important;
-            min-height: 460px !important;
-            max-width: 100% !important;
-            border-radius: 18px !important;
-            transform: none !important;
-            filter: none !important;
-            opacity: 1 !important;
+            height: clamp(440px, 78vh, 600px);
+            height: clamp(440px, 78dvh, 600px);
+            max-width: 96vw;
+            border-radius: 20px;
           }
 
           .sa-card-header {
@@ -883,17 +951,15 @@ export default function StackingAbout({
             bottom: 1.5rem;
             left: 1.25rem;
             right: 1.25rem;
-            transform: none !important;
-            opacity: 1 !important;
           }
 
           .sa-card-title {
-            font-size: 1.65rem;
-            line-height: 1.2;
+            font-size: clamp(1.4rem, 5.5vw, 1.85rem);
+            line-height: 1.22;
           }
 
           .sa-card-text {
-            font-size: 0.9rem;
+            font-size: 0.875rem;
             line-height: 1.5;
           }
 
@@ -902,8 +968,10 @@ export default function StackingAbout({
           }
 
           .sa-outro {
-            min-height: auto !important;
-            padding: 4.5rem 1.25rem !important;
+            min-height: 80vh;
+            min-height: 80svh;
+            min-height: 80dvh;
+            padding: 3.5rem 1.25rem;
           }
         }
 
@@ -1000,6 +1068,14 @@ export default function StackingAbout({
                     className="sa-card-img"
                     loading={idx === 0 ? 'eager' : 'lazy'}
                     referrerPolicy="no-referrer"
+                  />
+                  {/* Hardware-accelerated dim overlay (animates opacity, avoiding expensive GPU filter: brightness) */}
+                  <div
+                    ref={(el) => {
+                      cardDimRef.current[idx] = el;
+                    }}
+                    className="sa-card-dim"
+                    aria-hidden="true"
                   />
                   {/* Enhanced dark gradient scrim */}
                   <div className="sa-card-scrim" />

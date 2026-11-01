@@ -143,7 +143,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ companySettings }) => 
           <a
             href="#properties"
             onClick={scrollToProperties}
-            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-sm font-semibold text-[#0C0D10] bg-[#C8A35F] hover:bg-[#DEC07E] transition-all duration-200 shadow-lg shadow-[#C8A35F]/20 active:scale-[0.98] min-h-[48px]"
+            className="btn-gold inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-sm font-semibold text-[#0C0D10] bg-[#C8A35F] hover:bg-[#DEC07E] transition-all duration-200 shadow-lg shadow-[#C8A35F]/20 active:scale-[0.98] min-h-[48px]"
           >
             <span>{t('Explore Available Properties', 'ያሉትን ቤቶች ይመልከቱ')}</span>
             <ArrowRight className="w-4 h-4" />

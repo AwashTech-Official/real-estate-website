@@ -122,26 +122,33 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <div
           role="alert"
-          className="w-full py-8 px-4 my-4 bg-[#141519] border border-white/10 rounded-xl text-center space-y-3 max-w-4xl mx-auto"
+          className="w-full py-10 px-6 my-6 bg-[#141519] border border-[#C8A35F]/40 rounded-xl text-center space-y-4 max-w-4xl mx-auto shadow-xl"
         >
-          <div className="inline-flex items-center gap-2 text-amber-400/90 text-xs font-mono uppercase">
+          <div className="inline-flex items-center gap-2 text-[#C8A35F] text-xs font-mono uppercase tracking-wider">
             <AlertCircle className="w-4 h-4" />
-            <span>{section} temporarily unavailable</span>
+            <span>{section}</span>
           </div>
-          <p className="text-xs text-[#B4B1A8] max-w-md mx-auto">
-            This section could not load on your device. The rest of the site remains fully accessible.
+          <h3 className="text-base font-semibold text-[#F5F3EF]">
+            This section could not be loaded
+          </h3>
+          <p className="text-xs text-[#B4B1A8] max-w-md mx-auto leading-relaxed">
+            We encountered a temporary rendering issue. The rest of the page remains fully operational.
           </p>
-          <button
-            type="button"
-            onClick={this.handleRetry}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/5 hover:bg-white/10 text-[#F5F3EF] border border-white/10 transition-colors"
-          >
-            <RefreshCw className="w-3 h-3" />
-            <span>Retry section</span>
-          </button>
-          <p className="text-[10px] font-mono text-white/30 truncate max-w-sm mx-auto">
-            {errorMessage}
-          </p>
+          <div>
+            <button
+              type="button"
+              onClick={this.handleRetry}
+              className="btn-gold inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-[#C8A35F] text-[#0C0D10] hover:bg-[#DEC07E] transition-colors shadow-md"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry</span>
+            </button>
+          </div>
+          {errorMessage && (
+            <p className="text-[10px] font-mono text-white/30 truncate max-w-sm mx-auto">
+              {errorMessage}
+            </p>
+          )}
         </div>
       );
     }

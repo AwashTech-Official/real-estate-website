@@ -24,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
         setMobileMenuOpen(false);
       }
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
@@ -108,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Center: Desktop Navigation Links (About, Services, Properties, Contact) */}
         <nav
           aria-label="Main Navigation"
-          className="hidden md:flex items-center gap-6 lg:gap-8 text-sm font-medium text-[#B4B1A8]"
+          className="header-desktop-nav hidden md:flex items-center gap-6 lg:gap-8 text-sm font-medium text-[#B4B1A8]"
         >
           {navLinks.map((link) => (
             <a
@@ -140,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center justify-center gap-2 h-10 px-4 text-xs font-medium text-[#0C0D10] bg-[#C8A35F] hover:bg-[#DEC07E] rounded-md transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8A35F]"
+            className="btn-gold hidden sm:inline-flex items-center justify-center gap-2 h-10 px-4 text-xs font-medium text-[#0C0D10] bg-[#C8A35F] hover:bg-[#DEC07E] rounded-md transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8A35F]"
             aria-label={t('Chat with us on WhatsApp', 'በዋትስአፕ ያነጋግሩን')}
           >
             <MessageCircle className="w-4 h-4 fill-current" />
@@ -151,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] p-2 rounded-md text-[#F5F3EF] hover:bg-white/5 border border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8A35F]"
+            className="header-mobile-hamburger md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] p-2 rounded-md text-[#F5F3EF] hover:bg-white/5 border border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8A35F]"
             aria-expanded={mobileMenuOpen}
             aria-label={mobileMenuOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
           >

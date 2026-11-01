@@ -17,6 +17,11 @@ if (rootElement) {
   if (typeof window !== 'undefined') {
     // @ts-expect-error - watchdog indicator
     window.__APPLET_RENDERED__ = true;
+    // @ts-expect-error - watchdog timer id
+    if (window.__APPLET_WATCHDOG__) {
+      // @ts-expect-error - watchdog timer id
+      clearTimeout(window.__APPLET_WATCHDOG__);
+    }
     const fallback = document.getElementById('emergency-fallback');
     if (fallback) {
       fallback.style.display = 'none';

@@ -218,7 +218,7 @@ export const FloatingVoiceAgent: React.FC = () => {
               : 'opacity-0 pointer-events-none scale-95 translate-y-6 invisible'
           } ${
             /* Mobile: full-screen modal; Desktop: 380px wide x 560px tall in bottom-left */
-            'fixed inset-0 w-full h-[100dvh] bg-[#141519] flex flex-col sm:inset-auto sm:bottom-24 sm:left-5 sm:w-[380px] sm:h-[560px] sm:max-h-[calc(100dvh-120px)] sm:rounded-2xl sm:border sm:border-[#C8A35F]/30 sm:shadow-2xl sm:shadow-black/80 overflow-hidden'
+            'fixed inset-0 top-0 right-0 bottom-0 left-0 w-full h-full h-screen h-[100dvh] bg-[#141519] flex flex-col sm:inset-auto sm:bottom-24 sm:left-5 sm:w-[380px] sm:h-[560px] sm:max-h-[calc(100vh-120px)] sm:max-h-[calc(100dvh-120px)] sm:rounded-2xl sm:border sm:border-[#C8A35F]/30 sm:shadow-2xl sm:shadow-black/80 overflow-hidden'
           }`}
         >
           {/* Panel Header */}

@@ -28,13 +28,23 @@
   box-sizing: border-box;
 }
 
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   background-color: #0C0D10;
   color: #F5F3EF;
   font-family: var(--font-body);
+  /* Standard vh fallback before modern dvh for older Android WebView 80 */
+  min-height: 100vh;
   min-height: 100dvh;
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Typography Headings */
@@ -53,13 +63,33 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.625 !important;
 }
 
-/* Viewport dynamic sizing utility */
+/* Viewport dynamic sizing utility with backward compatibility */
 .min-h-screen-dvh {
+  min-height: 100vh;
   min-height: 100dvh;
 }
 
 .h-screen-dvh {
+  height: 100vh;
   height: 100dvh;
+}
+
+.h-screen-svh {
+  height: 100vh;
+  height: 100svh;
+}
+
+/* Older browser fallbacks for backdrop-filter and text balance */
+.backdrop-blur-fallback {
+  background-color: rgba(12, 13, 16, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* Safe text-wrap fallback */
+.text-balance-fallback {
+  text-wrap: normal;
+  text-wrap: balance;
 }
 
 /* Respect prefers-reduced-motion */

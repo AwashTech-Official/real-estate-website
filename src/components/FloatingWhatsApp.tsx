@@ -12,12 +12,12 @@ export const FloatingWhatsApp: React.FC<FloatingWhatsAppProps> = ({ companySetti
   const [isInputActive, setIsInputActive] = useState<boolean>(false);
   const [isVisible, setIsVisible] = useState<boolean>(false);
 
-  // Raw number resolution
+  // Raw number resolution with fallback for offline/slow Supabase connections
   const rawNumber =
     companySettings?.whatsapp?.trim() ||
     companySettings?.whatsapp_number?.trim() ||
     companySettings?.phone?.trim() ||
-    '';
+    '+251911234567';
   const cleanNumber = rawNumber.replace(/[^0-9+]/g, '').replace(/^\+/, '');
 
   // Delay appearance so it does not interfere with the hero initial view

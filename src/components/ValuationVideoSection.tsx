@@ -3,6 +3,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useLanguage } from '../context/LanguageContext';
 import { Calculator, ArrowRight } from 'lucide-react';
 import defaultPoster from '../assets/images/valuation_video_poster_1793312527709.jpg';
+import { isSlowConnection } from '../polyfills';
 
 interface ValuationVideoSectionProps {
   videoUrl?: string;
@@ -37,6 +38,7 @@ export const ValuationVideoSection: React.FC<ValuationVideoSectionProps> = ({
   const [isNearViewport, setIsNearViewport] = useState<boolean>(false);
   const [videoLoaded, setVideoLoaded] = useState<boolean>(false);
   const [videoFailed, setVideoFailed] = useState<boolean>(false);
+  const [isSlowNet, setIsSlowNet] = useState<boolean>(false);
   const hasRefreshedScrollTrigger = useRef<boolean>(false);
 
   const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(() => {
@@ -46,11 +48,13 @@ export const ValuationVideoSection: React.FC<ValuationVideoSectionProps> = ({
     return false;
   });
 
-  // 1. Listen for prefers-reduced-motion dynamically
+  // 1. Listen for prefers-reduced-motion and slow connection dynamically
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+    setIsSlowNet(isSlowConnection());
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const handleMotionChange = (event: MediaQueryListEvent) => {
       setPrefersReducedMotion(event.matches);
     };
@@ -58,7 +62,7 @@ export const ValuationVideoSection: React.FC<ValuationVideoSectionProps> = ({
     if (mediaQuery.addEventListener) {
       mediaQuery.addEventListener('change', handleMotionChange);
       return () => mediaQuery.removeEventListener('change', handleMotionChange);
-    } else {
+    } else if (typeof mediaQuery.addListener === 'function') {
       mediaQuery.addListener(handleMotionChange);
       return () => mediaQuery.removeListener(handleMotionChange);
     }
@@ -66,10 +70,15 @@ export const ValuationVideoSection: React.FC<ValuationVideoSectionProps> = ({
 
   // 2. IntersectionObserver for lazy loading and viewport-aware playback
   useEffect(() => {
-    if (typeof window === 'undefined' || prefersReducedMotion) return;
+    if (typeof window === 'undefined' || prefersReducedMotion || isSlowNet) return;
 
     const sectionEl = sectionRef.current;
     if (!sectionEl) return;
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsNearViewport(true);
+      return;
+    }
 
     // Preload when within 300px
     const loadObserver = new IntersectionObserver(
@@ -86,7 +95,7 @@ export const ValuationVideoSection: React.FC<ValuationVideoSectionProps> = ({
 
     loadObserver.observe(sectionEl);
 
-    // Play/Pause based on active visibility
+    // Play/Pause observer: only play when in active viewport
     const playbackObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -94,9 +103,9 @@ export const ValuationVideoSection: React.FC<ValuationVideoSectionProps> = ({
           if (!video) return;
 
           if (entry.isIntersecting) {
-            if (video.paused && !prefersReducedMotion) {
+            if (video.paused && !prefersReducedMotion && !isSlowNet) {
               video.play().catch(() => {
-                // Browser autoplay handling
+                // Ignore autoplay deferral
               });
             }
           } else {
@@ -115,27 +124,32 @@ export const ValuationVideoSection: React.FC<ValuationVideoSectionProps> = ({
       loadObserver.disconnect();
       playbackObserver.disconnect();
     };
-  }, [prefersReducedMotion]);
+  }, [prefersReducedMotion, isSlowNet]);
 
-  // 3. ScrollTrigger refresh on metadata load
+  // Refresh ScrollTrigger once metadata loads
   const handleLoadedMetadata = () => {
     setVideoLoaded(true);
     if (!hasRefreshedScrollTrigger.current) {
       hasRefreshedScrollTrigger.current = true;
-      ScrollTrigger.refresh();
+      try {
+        ScrollTrigger.refresh();
+      } catch {
+        // Ignore
+      }
     }
   };
 
-  const shouldRenderVideo = !prefersReducedMotion && !videoFailed;
+  // On slow connection, video failure, or reduced motion: show poster only!
+  const shouldRenderVideo = !prefersReducedMotion && !videoFailed && !isSlowNet;
 
-  const targetHref = `#contact?type=valuation&service=${encodeURIComponent('Property Valuation')}&message=${encodeURIComponent(
-    'Hello, I would like to request a confidential free valuation for my property in Addis Ababa.'
-  )}`;
-
-  const handleButtonClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleButtonClick = () => {
     if (onValuationClick) {
-      e.preventDefault();
       onValuationClick();
+    } else {
+      const el = document.getElementById('valuation-section');
+      if (el) {
+        el.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+      }
     }
   };
 
@@ -143,7 +157,8 @@ export const ValuationVideoSection: React.FC<ValuationVideoSectionProps> = ({
     <section
       id="valuation"
       ref={sectionRef}
-      className="relative w-full h-[72svh] sm:h-[84svh] max-h-[100svh] min-h-[480px] overflow-hidden bg-[#0C0D10] border-y border-white/5 flex items-center justify-center"
+      /* Precede svh with standard vh fallback for older Android devices */
+      className="relative w-full h-[72vh] sm:h-[84vh] h-[72svh] sm:h-[84svh] max-h-[100vh] max-h-[100svh] min-h-[480px] overflow-hidden bg-[#0C0D10] border-y border-white/5 flex items-center justify-center"
       aria-label={t('Property valuation video presentation', 'የንብረት ዋጋ ግመታ ቪዲዮ')}
     >
       {/* Background Poster Image */}
@@ -153,18 +168,18 @@ export const ValuationVideoSection: React.FC<ValuationVideoSectionProps> = ({
         loading="lazy"
         decoding="async"
         referrerPolicy="no-referrer"
-        className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-1000 ${
+        className={`absolute inset-0 top-0 right-0 bottom-0 left-0 w-full h-full object-cover object-center transition-opacity duration-700 ${
           videoLoaded && shouldRenderVideo ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       />
 
       {/* Dark gradient base fallback */}
       <div
-        className="absolute inset-0 bg-gradient-to-t from-[#0C0D10] via-transparent to-[#0C0D10]/60 -z-10"
+        className="absolute inset-0 top-0 right-0 bottom-0 left-0 bg-gradient-to-t from-[#0C0D10] via-transparent to-[#0C0D10]/60 -z-10"
         aria-hidden="true"
       />
 
-      {/* Video Element */}
+      {/* Video Element: preload="none" on mobile */}
       {shouldRenderVideo && isNearViewport && (
         <video
           ref={videoRef}
@@ -179,53 +194,57 @@ export const ValuationVideoSection: React.FC<ValuationVideoSectionProps> = ({
             setVideoFailed(true);
             if (!hasRefreshedScrollTrigger.current) {
               hasRefreshedScrollTrigger.current = true;
-              ScrollTrigger.refresh();
+              try {
+                ScrollTrigger.refresh();
+              } catch {
+                // Ignore
+              }
             }
           }}
-          className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-1000 ${
+          className={`absolute inset-0 top-0 right-0 bottom-0 left-0 w-full h-full object-cover object-center transition-opacity duration-700 ${
             videoLoaded ? 'opacity-100' : 'opacity-0'
           }`}
         />
       )}
 
-      {/* Contrast Overlay Scrim */}
+      {/* Deep contrast scrims */}
       <div
-        className="absolute inset-0 bg-gradient-to-t from-[#0C0D10] via-[#0C0D10]/70 to-[#0C0D10]/60 pointer-events-none"
+        className="absolute inset-0 top-0 right-0 bottom-0 left-0 bg-gradient-to-t from-[#0C0D10]/95 via-[#0C0D10]/75 to-[#0C0D10]/80 pointer-events-none"
         aria-hidden="true"
       />
       <div
-        className="absolute inset-0 bg-radial from-transparent via-[#0C0D10]/40 to-[#0C0D10]/80 pointer-events-none"
+        className="absolute inset-0 top-0 right-0 bottom-0 left-0 bg-[#0C0D10]/40 backdrop-blur-[1px] pointer-events-none"
         aria-hidden="true"
       />
 
-      {/* Overlay Content: Eyebrow, Short Headline, Subtext, and CTA Button */}
+      {/* Content Card Overlay */}
       <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col items-center text-center">
-        {/* Eyebrow */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded text-xs font-semibold tracking-wider uppercase text-[#C8A35F] bg-[#141519]/80 border border-[#C8A35F]/30 backdrop-blur-sm mb-4">
+        {/* Eyebrow Pill */}
+        <div className="inline-flex items-center gap-2 mb-4 px-3.5 py-1.5 rounded-full text-xs font-mono uppercase tracking-wider text-[#C8A35F] bg-[#141519]/80 border border-[#C8A35F]/30 backdrop-blur-md shadow-lg">
           <Calculator className="w-3.5 h-3.5" />
-          <span>{t('Property Valuation', 'የንብረት ዋጋ ግመታ')}</span>
+          <span>{t('Advisory & Valuation', 'የዋጋ ግመታ እና ማማከር')}</span>
         </div>
 
-        {/* Short Headline */}
-        <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#F5F3EF] max-w-3xl text-balance leading-tight drop-shadow-lg">
+        {/* Short Punchy Headline */}
+        <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#F5F3EF] max-w-3xl leading-[1.2]">
           {t(headlineEn, headlineAm)}
         </h2>
 
         {/* Subtext */}
-        <p className="mt-4 text-sm sm:text-base text-[#B4B1A8] max-w-2xl leading-relaxed text-balance drop-shadow-md">
+        <p className="mt-4 text-sm sm:text-base text-[#B4B1A8] max-w-2xl leading-relaxed">
           {t(subtextEn, subtextAm)}
         </p>
 
-        {/* CTA Button */}
-        <div className="mt-8 flex items-center justify-center">
-          <a
-            href={targetHref}
+        {/* Action Button */}
+        <div className="mt-8 flex flex-col sm:flex-row items-center gap-4">
+          <button
+            type="button"
             onClick={handleButtonClick}
-            className="inline-flex items-center justify-center gap-2.5 min-h-[48px] px-8 py-3.5 text-sm font-semibold text-[#0C0D10] bg-[#C8A35F] hover:bg-[#DEC07E] rounded-md transition-all duration-200 shadow-xl shadow-[#C8A35F]/20 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8A35F]"
+            className="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl text-sm font-semibold text-[#0C0D10] bg-[#C8A35F] hover:bg-[#DEC07E] transition-all duration-200 shadow-xl shadow-[#C8A35F]/20 active:scale-[0.98] cursor-pointer min-h-[48px]"
           >
             <span>{t(buttonTextEn, buttonTextAm)}</span>
-            <ArrowRight className="w-4 h-4 shrink-0" />
-          </a>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </section>

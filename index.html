@@ -12,10 +12,87 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..800;1,9..40,300..800&family=Noto+Sans+Ethiopic:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet" />
+
+    <script>
+      (function() {
+        // Global error capturing for diagnostics
+        window.__APPLET_LAST_ERROR__ = '';
+        window.__APPLET_RENDERED__ = false;
+
+        window.addEventListener('error', function(event) {
+          var msg = (event && event.message) ? event.message : String(event);
+          if (event && event.filename) {
+            msg += ' (' + event.filename + ':' + (event.lineno || 0) + ')';
+          }
+          window.__APPLET_LAST_ERROR__ = msg;
+          console.error('[Global Error Listener]', msg);
+        });
+
+        window.addEventListener('unhandledrejection', function(event) {
+          var reason = event && event.reason;
+          var msg = reason ? (reason.message || String(reason)) : 'Unhandled Promise rejection';
+          window.__APPLET_LAST_ERROR__ = msg;
+          console.error('[Global Unhandled Rejection]', msg);
+        });
+
+        // 8-Second Watchdog Timer: Protect against silent blank screens
+        setTimeout(function() {
+          var root = document.getElementById('root');
+          var isRendered = window.__APPLET_RENDERED__ || (root && root.children && root.children.length > 0 && root.offsetHeight > 50);
+          if (!isRendered) {
+            var fallbackDiv = document.getElementById('emergency-fallback');
+            if (fallbackDiv) {
+              fallbackDiv.style.display = 'flex';
+            }
+            var errEl = document.getElementById('emergency-error-text');
+            if (errEl) {
+              errEl.textContent = window.__APPLET_LAST_ERROR__ || 'Initialization took longer than 8 seconds on this device/connection.';
+            }
+          }
+        }, 8000);
+      })();
+    </script>
   </head>
   <body class="bg-[#0C0D10] text-[#F5F3EF] antialiased selection:bg-[#C8A35F]/30 selection:text-[#F5F3EF]">
+    <!-- Accessible NoScript Message -->
+    <noscript>
+      <div style="min-height: 100vh; background-color: #0C0D10; color: #F5F3EF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center;">
+        <div style="max-width: 480px; background: #141519; border: 1px solid rgba(200, 163, 95, 0.3); border-radius: 16px; padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
+          <h1 style="color: #F5F3EF; font-size: 22px; font-weight: bold; margin: 0 0 6px;">Addis Luxury Realty</h1>
+          <p style="color: #C8A35F; font-size: 13px; text-transform: uppercase; margin: 0 0 16px;">አዲስ የቅንጦት ሪል እስቴት</p>
+          <p style="color: #B4B1A8; font-size: 14px; line-height: 1.6; margin: 0 0 24px;">JavaScript is required to navigate our interactive property listings and valuations. You can still reach us directly:</p>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <a href="tel:+251911234567" style="background: #C8A35F; color: #0C0D10; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">📞 Call Us: +251 91 123 4567</a>
+            <a href="https://wa.me/251911234567?text=Hello%2C%20I%20would%20like%20to%20inquire%20about%20Addis%20Ababa%20properties" style="background: rgba(255,255,255,0.08); color: #F5F3EF; border: 1px solid rgba(255,255,255,0.15); padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">💬 Chat on WhatsApp</a>
+          </div>
+        </div>
+      </div>
+    </noscript>
+
+    <!-- 8-Second Emergency Fallback Container (Displayed only if nothing renders) -->
+    <div
+      id="emergency-fallback"
+      style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; min-height: 100vh; background-color: #0C0D10; color: #F5F3EF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; z-index: 99999; flex-direction: column; align-items: center; justify-content: center; padding: 1.25rem; box-sizing: border-box;"
+    >
+      <div style="width: 100%; max-width: 480px; background-color: #141519; border: 1px solid rgba(200, 163, 95, 0.3); border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+        <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(200, 163, 95, 0.15); border: 1px solid rgba(200, 163, 95, 0.4); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: #C8A35F; font-size: 22px;">🏛</div>
+        <h1 style="font-size: 20px; font-weight: bold; margin: 0 0 4px; color: #F5F3EF;">Addis Luxury Realty</h1>
+        <p style="font-size: 12px; color: #C8A35F; margin: 0 0 16px; text-transform: uppercase; letter-spacing: 0.1em;">አዲስ የቅንጦት ሪል እስቴት</p>
+        <p style="font-size: 13px; color: #B4B1A8; margin: 0 0 20px; line-height: 1.5;">The website is loading slower than expected on this network or device. You can connect with our team directly:</p>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+          <a href="tel:+251911234567" style="background-color: #C8A35F; color: #0C0D10; padding: 12px 16px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 14px; display: block;">📞 Call Us: +251 91 123 4567</a>
+          <a href="https://wa.me/251911234567?text=Hello%2C%20I%20would%20like%20to%20inquire%20about%20Addis%20Ababa%20properties" style="background-color: rgba(255,255,255,0.08); color: #F5F3EF; border: 1px solid rgba(255,255,255,0.15); padding: 12px 16px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 14px; display: block;">💬 Chat on WhatsApp</a>
+        </div>
+        <button onclick="window.location.reload()" style="background: none; border: none; color: #B4B1A8; font-size: 12px; text-decoration: underline; cursor: pointer; margin-bottom: 16px;">🔄 Tap here to reload</button>
+        <div style="text-align: left; background: #0C0D10; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px;">
+          <div style="font-size: 10px; color: #8E8B82; text-transform: uppercase; font-family: monospace; margin-bottom: 4px;">Technical Details (Screenshot for support):</div>
+          <div id="emergency-error-text" style="font-size: 11px; color: #F87171; font-family: monospace; word-break: break-all; white-space: pre-wrap; max-height: 90px; overflow-y: auto;">Initialization taking longer than 8s on slow network.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Application Root -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

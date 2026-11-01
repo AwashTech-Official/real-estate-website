@@ -452,13 +452,14 @@ export default function ServicesSlider({
 
           position: relative;
           width: 100%;
+          min-height: 100vh;
           min-height: 100svh;
           min-height: 100dvh;
           height: auto;
           background-color: var(--sv-bg);
           color: var(--sv-text);
           font-family: var(--sv-font-body);
-          overflow-x: clip;
+          overflow-x: hidden;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
@@ -489,6 +490,10 @@ export default function ServicesSlider({
         /* Stacked background layers for cross-fading */
         .sv-bg-layers {
           position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          left: 0;
           inset: 0;
           width: 100%;
           height: 100%;
@@ -499,6 +504,10 @@ export default function ServicesSlider({
 
         .sv-bg-item {
           position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          left: 0;
           inset: 0;
           width: 100%;
           height: 100%;
@@ -526,6 +535,10 @@ export default function ServicesSlider({
         /* Permanent dark contrast overlay layer */
         .sv-overlay {
           position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          left: 0;
           inset: 0;
           z-index: 3;
           pointer-events: none;

@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useLanguage } from '../context/LanguageContext';
+import { isSlowConnection, isLowEndDevice } from '../polyfills';
 
 import imgVilla from '../assets/images/about_villa_exterior_1793311211872.jpg';
 import imgInterior from '../assets/images/about_modern_interior_1793311212933.jpg';
@@ -145,6 +146,7 @@ export default function StackingAbout({
 
   const [activeCardIndex, setActiveCardIndex] = useState<number>(0);
   const [isProgressVisible, setIsProgressVisible] = useState<boolean>(false);
+  const [isMobileOrLowEnd, setIsMobileOrLowEnd] = useState<boolean>(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -152,11 +154,13 @@ export default function StackingAbout({
     return false;
   });
 
-  // Listen dynamically to prefers-reduced-motion changes with matchMedia
+  // Dynamic prefers-reduced-motion and mobile/low-end capability detection
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+    setIsMobileOrLowEnd(isLowEndDevice() || isSlowConnection());
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const handleMotionChange = (event: MediaQueryListEvent) => {
       setPrefersReducedMotion(event.matches);
     };
@@ -164,7 +168,7 @@ export default function StackingAbout({
     if (mediaQuery.addEventListener) {
       mediaQuery.addEventListener('change', handleMotionChange);
       return () => mediaQuery.removeEventListener('change', handleMotionChange);
-    } else {
+    } else if (typeof mediaQuery.addListener === 'function') {
       mediaQuery.addListener(handleMotionChange);
       return () => mediaQuery.removeListener(handleMotionChange);
     }
@@ -175,257 +179,254 @@ export default function StackingAbout({
   useIsomorphicLayoutEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Register GSAP ScrollTrigger
-    gsap.registerPlugin(ScrollTrigger);
-
     const container = containerRef.current;
     if (!container) return;
 
-    // If reduced motion is active, leave layout in standard static vertical document flow
-    if (prefersReducedMotion) {
-      ScrollTrigger.getAll().forEach((st) => {
-        if (st.vars.id?.toString().startsWith('sa-')) {
-          st.kill();
-        }
-      });
+    // On mobile (<768px), low memory, or reduced motion, skip pinning & scrub.
+    // Render StackingAbout as a clean, performant vertical stack!
+    if (isMobileOrLowEnd || prefersReducedMotion) {
+      try {
+        ScrollTrigger.getAll().forEach((st) => {
+          if (st.vars.id?.toString().startsWith('sa-')) {
+            st.kill();
+          }
+        });
+      } catch {
+        // Ignore
+      }
       return;
     }
 
-    const cardEls = cardElementsRef.current.filter((el): el is HTMLDivElement => el !== null);
-    const cardInners = cardInnerRef.current.filter((el): el is HTMLDivElement => el !== null);
-    const cardImgs = cardImgRef.current.filter((el): el is HTMLImageElement => el !== null);
-    const cardContents = cardContentRef.current.filter((el): el is HTMLDivElement => el !== null);
-    const introEl = introRef.current;
-    const introHeading = introHeadingRef.current;
-    const outroEl = outroRef.current;
-    const outroContent = outroContentRef.current;
+    try {
+      // Register GSAP ScrollTrigger safely inside try/catch
+      gsap.registerPlugin(ScrollTrigger);
 
-    if (cardEls.length === 0 || !introEl || !outroEl) return;
+      const cardEls = cardElementsRef.current.filter((el): el is HTMLDivElement => el !== null);
+      const cardInners = cardInnerRef.current.filter((el): el is HTMLDivElement => el !== null);
+      const cardImgs = cardImgRef.current.filter((el): el is HTMLImageElement => el !== null);
+      const cardContents = cardContentRef.current.filter((el): el is HTMLDivElement => el !== null);
+      const introEl = introRef.current;
+      const introHeading = introHeadingRef.current;
+      const outroEl = outroRef.current;
+      const outroContent = outroContentRef.current;
 
-    const ctx = gsap.context(() => {
-      // 1. HERO INTRO ANIMATION: Heading smoothly fades, slightly moves up, and scales down as user scrolls
-      if (introHeading) {
-        gsap.to(introHeading, {
-          opacity: 0,
-          y: -40,
-          scale: 0.96,
-          ease: 'none',
-          scrollTrigger: {
-            id: 'sa-intro',
-            trigger: introEl,
-            start: 'top top',
-            end: 'bottom top',
-            scrub: 1,
-            invalidateOnRefresh: true,
-          },
-        });
-      }
+      if (cardEls.length === 0 || !introEl || !outroEl) return;
 
-      // 2. STACKING CARDS PINNING: Each card pins at 'top top' with pinSpacing: false until Outro reaches 'top top'
-      cardEls.forEach((card, i) => {
-        ScrollTrigger.create({
-          id: `sa-pin-${i}`,
-          trigger: card,
-          start: 'top top',
-          endTrigger: outroEl,
-          end: 'top top',
-          pin: true,
-          pinSpacing: false,
-          anticipatePin: 1,
-          invalidateOnRefresh: true,
-        });
-      });
-
-      // 3. CARD 0 INITIAL ENTRANCE (Image subtle zoom settle as intro scrolls away)
-      if (cardImgs[0]) {
-        gsap.fromTo(
-          cardImgs[0],
-          { scale: 1.08 },
-          {
-            scale: 1.0,
+      const ctx = gsap.context(() => {
+        // 1. HERO INTRO ANIMATION
+        if (introHeading) {
+          gsap.to(introHeading, {
+            opacity: 0,
+            y: -40,
+            scale: 0.96,
             ease: 'none',
             scrollTrigger: {
-              id: 'sa-card-0-zoom',
-              trigger: cardEls[0],
-              start: 'top bottom',
-              end: 'top top',
+              id: 'sa-intro',
+              trigger: introEl,
+              start: 'top top',
+              end: 'bottom top',
               scrub: 1,
+              invalidateOnRefresh: true,
             },
-          }
-        );
-      }
+          });
+        }
 
-      // 4. TRANSITIONS BETWEEN CARDS: When incoming card slides over, previous card gently scales to ~0.9, dims, and moves up slightly
-      for (let i = 1; i < cardEls.length; i++) {
-        const incomingCard = cardEls[i];
-        const incomingImg = cardImgs[i];
-        const incomingContent = cardContents[i];
-
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            id: `sa-transition-${i}`,
-            trigger: incomingCard,
-            start: 'top bottom',
+        // 2. STACKING CARDS PINNING
+        cardEls.forEach((card, i) => {
+          ScrollTrigger.create({
+            id: `sa-pin-${i}`,
+            trigger: card,
+            start: 'top top',
+            endTrigger: outroEl,
             end: 'top top',
-            scrub: 1,
+            pin: true,
+            pinSpacing: false,
+            anticipatePin: 1,
             invalidateOnRefresh: true,
-          },
+          });
         });
 
-        // Previous card (i - 1) scales down to ~0.91, dims slightly, moves up slightly
-        if (cardInners[i - 1]) {
-          tl.to(
-            cardInners[i - 1],
+        // 3. CARD 0 INITIAL ENTRANCE
+        if (cardImgs[0]) {
+          gsap.fromTo(
+            cardImgs[0],
+            { scale: 1.08 },
             {
-              scale: 0.91,
-              yPercent: -3.5,
-              filter: 'brightness(0.68)',
+              scale: 1.0,
               ease: 'none',
-            },
-            0
+              scrollTrigger: {
+                id: 'sa-card-0-zoom',
+                trigger: cardEls[0],
+                start: 'top bottom',
+                end: 'top top',
+                scrub: 1,
+              },
+            }
           );
         }
 
-        // Even earlier cards (j < i - 1) recede a tiny step further to form a natural layered deck
-        for (let j = 0; j < i - 1; j++) {
-          if (cardInners[j]) {
+        // 4. TRANSITIONS BETWEEN CARDS
+        for (let i = 1; i < cardEls.length; i++) {
+          const incomingCard = cardEls[i];
+          const incomingImg = cardImgs[i];
+          const incomingContent = cardContents[i];
+
+          const tl = gsap.timeline({
+            scrollTrigger: {
+              id: `sa-transition-${i}`,
+              trigger: incomingCard,
+              start: 'top bottom',
+              end: 'top top',
+              scrub: 1,
+              invalidateOnRefresh: true,
+            },
+          });
+
+          if (cardInners[i - 1]) {
             tl.to(
-              cardInners[j],
+              cardInners[i - 1],
               {
-                scale: Math.max(0.82, 0.91 - (i - 1 - j) * 0.04),
-                yPercent: -3.5 - (i - 1 - j) * 1.5,
-                filter: `brightness(${Math.max(0.42, 0.68 - (i - 1 - j) * 0.12)})`,
+                scale: 0.91,
+                yPercent: -3.5,
+                filter: 'brightness(0.68)',
                 ease: 'none',
               },
               0
             );
           }
+
+          for (let j = 0; j < i - 1; j++) {
+            if (cardInners[j]) {
+              tl.to(
+                cardInners[j],
+                {
+                  scale: Math.max(0.82, 0.91 - (i - 1 - j) * 0.04),
+                  yPercent: -3.5 - (i - 1 - j) * 1.5,
+                  filter: `brightness(${Math.max(0.42, 0.68 - (i - 1 - j) * 0.12)})`,
+                  ease: 'none',
+                },
+                0
+              );
+            }
+          }
+
+          if (incomingImg) {
+            tl.fromTo(incomingImg, { scale: 1.12 }, { scale: 1.0, ease: 'none' }, 0);
+          }
+
+          if (incomingContent) {
+            tl.fromTo(incomingContent, { opacity: 0.15, y: 35 }, { opacity: 1, y: 0, ease: 'none' }, 0);
+          }
         }
 
-        // Incoming card image zoom settle
-        if (incomingImg) {
-          tl.fromTo(
-            incomingImg,
-            { scale: 1.12 },
-            { scale: 1.0, ease: 'none' },
+        // 5. OUTRO SLIDE-UP
+        const lastCardInner = cardInners[cardEls.length - 1];
+        if (lastCardInner && outroEl) {
+          const outroTl = gsap.timeline({
+            scrollTrigger: {
+              id: 'sa-outro-timeline',
+              trigger: outroEl,
+              start: 'top bottom',
+              end: 'top top',
+              scrub: 1,
+              invalidateOnRefresh: true,
+            },
+          });
+
+          outroTl.to(
+            lastCardInner,
+            {
+              scale: 0.91,
+              yPercent: -3.5,
+              filter: 'brightness(0.65)',
+              ease: 'none',
+            },
             0
           );
+
+          if (outroContent) {
+            outroTl.fromTo(outroContent, { opacity: 0.2, y: 40 }, { opacity: 1, y: 0, ease: 'none' }, 0);
+          }
         }
 
-        // Incoming card text fade-in and slide-up
-        if (incomingContent) {
-          tl.fromTo(
-            incomingContent,
-            { opacity: 0.15, y: 35 },
-            { opacity: 1, y: 0, ease: 'none' },
-            0
-          );
+        // 6. ACTIVE CARD TRACKING & PROGRESS VISIBILITY
+        cardEls.forEach((card, index) => {
+          ScrollTrigger.create({
+            id: `sa-track-${index}`,
+            trigger: card,
+            start: 'top center',
+            end: 'bottom center',
+            onEnter: () => setActiveCardIndex(index),
+            onEnterBack: () => setActiveCardIndex(index),
+          });
+        });
+
+        if (cardsWrapRef.current) {
+          ScrollTrigger.create({
+            id: 'sa-progress-visibility',
+            trigger: cardsWrapRef.current,
+            start: 'top center',
+            endTrigger: outroEl,
+            end: 'top center',
+            onEnter: () => setIsProgressVisible(true),
+            onLeave: () => setIsProgressVisible(false),
+            onEnterBack: () => setIsProgressVisible(true),
+            onLeaveBack: () => setIsProgressVisible(false),
+          });
         }
-      }
+      }, container);
 
-      // 5. OUTRO SLIDE-UP OVER LAST CARD: Last card scales down and dims as Outro block slides in
-      const lastCardInner = cardInners[cardEls.length - 1];
-      if (lastCardInner && outroEl) {
-        const outroTl = gsap.timeline({
-          scrollTrigger: {
-            id: 'sa-outro-timeline',
-            trigger: outroEl,
-            start: 'top bottom',
-            end: 'top top',
-            scrub: 1,
-            invalidateOnRefresh: true,
-          },
-        });
+      // Refresh triggers once all images load safely
+      const images = container.querySelectorAll('img');
+      let loadedCount = 0;
+      const totalImgCount = images.length;
 
-        outroTl.to(
-          lastCardInner,
-          {
-            scale: 0.91,
-            yPercent: -3.5,
-            filter: 'brightness(0.65)',
-            ease: 'none',
-          },
-          0
-        );
-
-        if (outroContent) {
-          outroTl.fromTo(
-            outroContent,
-            { opacity: 0.2, y: 40 },
-            { opacity: 1, y: 0, ease: 'none' },
-            0
-          );
+      const onImageLoaded = () => {
+        loadedCount++;
+        if (loadedCount >= totalImgCount) {
+          try {
+            ScrollTrigger.refresh();
+          } catch {
+            // Ignore
+          }
         }
-      }
+      };
 
-      // 6. ACTIVE CARD TRACKING & PROGRESS VISIBILITY
-      cardEls.forEach((card, index) => {
-        ScrollTrigger.create({
-          id: `sa-track-${index}`,
-          trigger: card,
-          start: 'top center',
-          end: 'bottom center',
-          onEnter: () => setActiveCardIndex(index),
-          onEnterBack: () => setActiveCardIndex(index),
-        });
-      });
-
-      // Show progress dots only when inside the stacking cards section
-      if (cardsWrapRef.current) {
-        ScrollTrigger.create({
-          id: 'sa-progress-visibility',
-          trigger: cardsWrapRef.current,
-          start: 'top center',
-          endTrigger: outroEl,
-          end: 'top center',
-          onEnter: () => setIsProgressVisible(true),
-          onLeave: () => setIsProgressVisible(false),
-          onEnterBack: () => setIsProgressVisible(true),
-          onLeaveBack: () => setIsProgressVisible(false),
-        });
-      }
-    }, container);
-
-    // Refresh triggers once all images load (without manual window resize listener)
-    const images = container.querySelectorAll('img');
-    let loadedCount = 0;
-    const totalImgCount = images.length;
-
-    const onImageLoaded = () => {
-      loadedCount++;
-      if (loadedCount >= totalImgCount) {
-        ScrollTrigger.refresh();
-      }
-    };
-
-    images.forEach((img) => {
-      if (img.complete) {
-        onImageLoaded();
-      } else {
-        img.addEventListener('load', onImageLoaded);
-        img.addEventListener('error', onImageLoaded);
-      }
-    });
-
-    return () => {
       images.forEach((img) => {
-        img.removeEventListener('load', onImageLoaded);
-        img.removeEventListener('error', onImageLoaded);
+        if (img.complete) {
+          onImageLoaded();
+        } else {
+          img.addEventListener('load', onImageLoaded);
+          img.addEventListener('error', onImageLoaded);
+        }
       });
-      ctx.revert();
-    };
-  }, [prefersReducedMotion, totalCards]);
+
+      return () => {
+        images.forEach((img) => {
+          img.removeEventListener('load', onImageLoaded);
+          img.removeEventListener('error', onImageLoaded);
+        });
+        ctx.revert();
+      };
+    } catch (err) {
+      console.warn('[StackingAbout] GSAP initialization caught and bypassed:', err);
+    }
+  }, [prefersReducedMotion, isMobileOrLowEnd, totalCards]);
 
   const handleDotClick = (index: number) => {
-    const targetPin = ScrollTrigger.getById(`sa-pin-${index}`);
-    if (targetPin) {
-      window.scrollTo({
-        top: targetPin.start,
-        behavior: 'smooth',
-      });
-    } else {
-      cardElementsRef.current[index]?.scrollIntoView({ behavior: 'smooth' });
+    try {
+      const targetPin = ScrollTrigger.getById(`sa-pin-${index}`);
+      if (targetPin) {
+        window.scrollTo({
+          top: targetPin.start,
+          behavior: 'smooth',
+        });
+        return;
+      }
+    } catch {
+      // Fallback below
     }
+    cardElementsRef.current[index]?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const localizedAriaLabel = t(ariaLabel, CONTENT.ariaLabel_am);
@@ -464,7 +465,8 @@ export default function StackingAbout({
           background-color: var(--sa-bg);
           color: var(--sa-text);
           font-family: var(--sa-font-body);
-          overflow-x: clip;
+          /* Replace overflow-x: clip with overflow-x: hidden for Chrome 80 */
+          overflow-x: hidden;
           box-sizing: border-box;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
@@ -488,10 +490,11 @@ export default function StackingAbout({
         }
 
         /* --------------------------------------------------------------------------
-           HERO INTRO BLOCK (Using 100svh / 100dvh)
+           HERO INTRO BLOCK (Using 100vh fallback before 100svh / 100dvh)
            -------------------------------------------------------------------------- */
         .sa-intro {
           position: relative;
+          min-height: 100vh;
           min-height: 100svh;
           min-height: 100dvh;
           width: 100%;
@@ -528,6 +531,7 @@ export default function StackingAbout({
           letter-spacing: -0.02em;
           color: var(--sa-text);
           margin: 0 0 clamp(1rem, 2.5vh, 1.75rem) 0;
+          text-wrap: normal;
           text-wrap: balance;
         }
 
@@ -557,7 +561,7 @@ export default function StackingAbout({
         }
 
         /* --------------------------------------------------------------------------
-           STACKING CARDS CONTAINER & CARDS (Using 100svh / 100dvh)
+           STACKING CARDS CONTAINER & CARDS (Using 100vh fallback before 100svh / 100dvh)
            -------------------------------------------------------------------------- */
         .sa-cards-wrap {
           position: relative;
@@ -566,6 +570,7 @@ export default function StackingAbout({
 
         .sa-card {
           position: relative;
+          height: 100vh;
           height: 100svh;
           height: 100dvh;
           width: 100%;
@@ -580,6 +585,7 @@ export default function StackingAbout({
           position: relative;
           width: 100%;
           max-width: clamp(320px, 86vw, 1200px);
+          height: clamp(500px, 80vh, 740px);
           height: clamp(500px, 80dvh, 740px);
           border-radius: var(--sa-radius);
           overflow: hidden;
@@ -591,6 +597,10 @@ export default function StackingAbout({
 
         .sa-card-img-wrap {
           position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          left: 0;
           inset: 0;
           width: 100%;
           height: 100%;
@@ -607,9 +617,13 @@ export default function StackingAbout({
           will-change: transform;
         }
 
-        /* Enhanced gradient scrim ensuring high contrast legibility for eyebrow and text */
+        /* Enhanced gradient scrim */
         .sa-card-scrim {
           position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          left: 0;
           inset: 0;
           background: linear-gradient(
             180deg,
@@ -671,6 +685,7 @@ export default function StackingAbout({
           letter-spacing: -0.015em;
           color: var(--sa-text);
           margin: 0 0 clamp(0.5rem, 1.5vh, 0.875rem) 0;
+          text-wrap: normal;
           text-wrap: balance;
           text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
         }
@@ -680,14 +695,11 @@ export default function StackingAbout({
           line-height: 1.6;
           color: var(--sa-text-muted);
           margin: 0;
-          text-wrap: pretty;
           text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
         }
 
         /* --------------------------------------------------------------------------
            THIN PROGRESS INDICATOR (Floating side bar)
-           - Visibility hidden when not visible (not keyboard focusable)
-           - Minimum 24px clickable area per dot
            -------------------------------------------------------------------------- */
         .sa-progress {
           position: fixed;
@@ -700,9 +712,9 @@ export default function StackingAbout({
           gap: 6px;
           align-items: center;
           padding: 8px 6px;
-          background: rgba(18, 19, 23, 0.75);
-          backdrop-filter: blur(14px);
+          background: rgba(18, 19, 23, 0.85);
           -webkit-backdrop-filter: blur(14px);
+          backdrop-filter: blur(14px);
           border-radius: 9999px;
           border: 1px solid rgba(255, 255, 255, 0.1);
           opacity: 0;
@@ -717,7 +729,6 @@ export default function StackingAbout({
           pointer-events: auto;
         }
 
-        /* Each dot button has >= 24px clickable area */
         .sa-progress-dot-btn {
           min-width: 24px;
           min-height: 24px;
@@ -757,10 +768,11 @@ export default function StackingAbout({
         }
 
         /* --------------------------------------------------------------------------
-           ENDING OUTRO BLOCK (Using 100svh / 100dvh)
+           ENDING OUTRO BLOCK (Using 100vh fallback before 100svh / 100dvh)
            -------------------------------------------------------------------------- */
         .sa-outro {
           position: relative;
+          min-height: 100vh;
           min-height: 100svh;
           min-height: 100dvh;
           width: 100%;
@@ -788,6 +800,7 @@ export default function StackingAbout({
           letter-spacing: -0.02em;
           color: var(--sa-text);
           margin: 0 0 clamp(1.5rem, 3.5vh, 2.5rem) 0;
+          text-wrap: normal;
           text-wrap: balance;
         }
 
@@ -830,17 +843,34 @@ export default function StackingAbout({
         }
 
         /* --------------------------------------------------------------------------
-           RESPONSIVE MOBILE COMPOSITION
+           RESPONSIVE MOBILE & LOW-MEMORY COMPOSITION
+           On screens < 768px or prefers-reduced-motion, skip pinning and render
+           a clean vertical natural stack so low-end devices never hitch or blank out!
            -------------------------------------------------------------------------- */
-        @media (max-width: 768px) {
+        @media (max-width: 767px) {
+          .sa-intro {
+            min-height: auto !important;
+            padding: 4.5rem 1.25rem 2.5rem !important;
+          }
+
           .sa-card {
-            padding: 1rem 0.75rem;
+            position: relative !important;
+            height: auto !important;
+            min-height: auto !important;
+            padding: 0.75rem 0.5rem !important;
+            margin-bottom: 2rem !important;
+            transform: none !important;
+            opacity: 1 !important;
           }
 
           .sa-card-inner {
-            max-width: 95vw;
-            height: clamp(480px, 82dvh, 640px);
-            border-radius: 18px;
+            height: auto !important;
+            min-height: 460px !important;
+            max-width: 100% !important;
+            border-radius: 18px !important;
+            transform: none !important;
+            filter: none !important;
+            opacity: 1 !important;
           }
 
           .sa-card-header {
@@ -853,6 +883,8 @@ export default function StackingAbout({
             bottom: 1.5rem;
             left: 1.25rem;
             right: 1.25rem;
+            transform: none !important;
+            opacity: 1 !important;
           }
 
           .sa-card-title {
@@ -866,21 +898,20 @@ export default function StackingAbout({
           }
 
           .sa-progress {
-            right: 0.5rem;
-            padding: 6px 4px;
-            gap: 4px;
+            display: none !important;
+          }
+
+          .sa-outro {
+            min-height: auto !important;
+            padding: 4.5rem 1.25rem !important;
           }
         }
 
-        /* --------------------------------------------------------------------------
-           PREFERS REDUCED MOTION (A11Y)
-           No pinning or scrubbed transformations; standard vertical accessible stack.
-           -------------------------------------------------------------------------- */
         @media (prefers-reduced-motion: reduce) {
           .sa-card {
             position: relative !important;
             height: auto !important;
-            min-height: 75dvh !important;
+            min-height: 70vh !important;
             margin-bottom: 2rem !important;
             transform: none !important;
             opacity: 1 !important;
